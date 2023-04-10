@@ -23,6 +23,9 @@ noremap <SID>MakeSession :call MakeSession()<CR>
 noremap <unique> <script> <Plug>LoadSession;  <SID>LoadSession
 noremap <SID>LoadSession :call LoadSession()<CR>
 
+noremap <unique> <script> <Plug>UpdateSession;  <SID>UpdateSession
+noremap <SID>UpdateSession :call UpdateSession()<CR>
+
 noremap <unique> <script> <Plug>ListSessions;  <SID>ListSessions
 noremap <SID>ListSessions :call ListSessions()<CR>
 
@@ -35,6 +38,10 @@ endif
 
 if !exists(":LoadSession")
 	command -nargs=0 LoadSession :call LoadSession()
+endif
+
+if !exists(":UpdateSession")
+	command -nargs=0 UpdateSession :call UpdateSession()
 endif
 
 if !exists(":ListSessions")
@@ -102,7 +109,7 @@ def LoadSession()
 enddef
 
 def SwitchSession()
-	var directory = ComputeLnum()->getline()
+	var directory = getline(".")
 	if UpdateSession()
 		tabonly
 		only
