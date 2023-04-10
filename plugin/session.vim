@@ -72,18 +72,18 @@ enddef
 
 def MakeSession()
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
-	if (filewritable(sessiondir) != 2)
+	if filewritable(sessiondir) != 2
 		exe "silent !mkdir -p" sessiondir
 		redraw!
 	endif
 	exe "mksession!" sessiondir .. "/session.vim"
 enddef
 
-def UpdateSession()
-	# Updates a session, BUT ONLY IF IT ALREADY EXISTS
+def UpdateSession(): bool
+	# updates a session, but only if it already exists
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	var sessionfile = sessiondir .. "/session.vim"
-	if (filereadable(sessionfile))
+	if filereadable(sessionfile)
 		if CloseBufferList()
 			exe "mksession!" sessionfile
 			echo "updating session"
@@ -91,16 +91,22 @@ def UpdateSession()
 	else
 		echo "file" sessionfile "is not readable"
 	endif
+	return true
 enddef
 
 def LoadSession()
+	def DoLoadSession(sessionfile: string): bool
+		exe "source" sessionfile
+		return true
+	enddef
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	var sessionfile = sessiondir .. "/session.vim"
-	if (filereadable(sessionfile))
+	if filereadable(sessionfile)
 		tabonly
 		only
-		exe "source" sessionfile
-		CloseBufferList()
+		if DoLoadSession(sessionfile)
+			CloseBufferList()
+		endif
 	else
 		echo "No session loaded, creating new session"
 		call MakeSession()
@@ -117,6 +123,7 @@ def SwitchSession()
 	endif
 enddef
 
+# TODO: change to vim script instead of shell script
 def ListSessions()
 	exe 'term ++shell find ~/.vim_sessions -type f -exec ls -1rt "{}" + | cut -d "/" -f5- | xargs dirname | sed -e "s;^;/;g"'
 enddef
