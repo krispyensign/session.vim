@@ -65,9 +65,9 @@ var Nameref: func
 def CloseBufferList(): bool
 	for bname in g:session_buffers_to_close
 		if bufexists(bname)
+			Nameref = () => bname
 			try
-				Nameref = () => bname
-				g/^/bd bufnr(Nameref())
+				g/^/exe "bd" bufnr(Nameref())
 			catch
 			endtry
 		endif
