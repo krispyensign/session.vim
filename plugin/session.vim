@@ -57,19 +57,15 @@ if !exists(":SwitchSession")
 endif
 
 # session helpers
-def CloseBufferByName(name: string)
-	if bufexists(name)
-		let nr = bufnr(name)
-		try
-			exe "bd" nr
-		catch
-		endtry
-	endif
-enddef
-
 def CloseBufferList(): bool
-	for name in g:session_buffers_to_close
-		tabdo CloseBufferByName(name)
+	for bufname in g:session_buffers_to_close
+		if bufexists(bufname)
+			var nr = bufnr(bufname)
+			try
+				tabdo exe "bd" nr
+			catch
+			endtry
+		endif
 	endfor
 	return true
 enddef
