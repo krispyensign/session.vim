@@ -67,7 +67,7 @@ def CloseBufferList(): bool
 		if bufexists(bname)
 			try
 				Nameref = () => bname
-				g/^/exe "bd" bufnr(Nameref())
+				g/^/bd bufnr(Nameref())
 			catch
 			endtry
 		endif
