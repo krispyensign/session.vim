@@ -1,22 +1,66 @@
 vim9script noclear
 
-# au VimLeave * :call UpdateSession()
-nnoremap <leader>ml :call LoadSession()<CR>
-nnoremap <leader>ms :call MakeSession()<CR>
-nnoremap <leader>mL :call ListSessions()<CR>
-nnoremap <leader>mS ^vg_y :call SwitchSession('<C-R>"')<CR>
+if exists("g:loaded_sessions")
+	finish
+endif
+g:loaded_sessions = 1
+
+if !exists("g:sessions_auto_update")
+	g:sessions_auto_update = 1
+endif
+
+if !exists("g:session_buffers_to_close")
+	g:session_buffers_to_close = ['NetrwTreeListing', '[Plugins]']
+endif
+
+if g:sessions_auto_update != 0
+	au VimLeave * :call UpdateSession()
+endif
+
+noremap <unique> <script> <Plug>MakeSession;  <SID>MakeSession
+noremap <SID>MakeSession :call MakeSession()<CR>
+
+noremap <unique> <script> <Plug>LoadSession;  <SID>LoadSession
+noremap <SID>LoadSession :call LoadSession()<CR>
+
+noremap <unique> <script> <Plug>ListSessions;  <SID>ListSessions
+noremap <SID>ListSessions :call ListSessions()<CR>
+
+noremap <unique> <script> <Plug>SwitchSession;  <SID>SwitchSessions
+noremap <SID>SwitchSession :call SwitchSession()<CR>
+
+if !exists(":MakeSession")
+	command -nargs=0 MakeSession :call MakeSession()
+endif
+
+if !exists(":LoadSession")
+	command -nargs=0 LoadSession :call LoadSession()
+endif
+
+if !exists(":ListSessions")
+	command -nargs=0 ListSessions :call ListSessions()
+endif
+
+if !exists(":SwitchSession")
+	command -nargs=0 SwitchSession :call SwitchSession()
+endif
 
 # session helpers
-def CloseBufferByName(name: string): number
+def CloseBufferByName(name: string)
 	if bufexists(name)
 		let nr = bufnr(name)
 		try
 			exe 'bd' nr
-			return 1
 		catch
 		endtry
 	endif
-	return 0
+enddef
+
+def CloseBufferList(): bool
+	for name in g:session_buffers_to_close
+		tabdo CloseBufferByName(name)
+	endfor
+	return true
 enddef
 
 def MakeSession()
@@ -28,22 +72,15 @@ def MakeSession()
 	exe 'mksession!' sessiondir .. '/session.vim'
 enddef
 
-
 def UpdateSession(): number
 	" Updates a session, BUT ONLY IF IT ALREADY EXISTS
 	var sessiondir = $HOME .. '/.vim_sessions' .. getcwd()
 	var sessionfile = sessiondir .. '/session.vim'
 	if (filereadable(sessionfile))
-		try
-			tabdo CloseBufferByName('NetrwTreeListing')
-		catch
-		endtry
-		try
-			tabdo CloseBufferByName('[Plugins]')
-		catch
-		endtry
-		exe 'mksession!' sessionfile
-		echo 'updating session'
+		if CloseBufferList()
+			exe 'mksession!' sessionfile
+			echo 'updating session'
+		endif
 	else
 		echo 'file' sessionfile 'is not readable'
 	endif
@@ -54,27 +91,27 @@ def LoadSession()
 	var sessiondir = $HOME .. '/.vim_sessions' .. getcwd()
 	var sessionfile = sessiondir .. '/session.vim'
 	if (filereadable(sessionfile))
+		tabonly
+		only
 		exe 'source' sessionfile
-		try
-			tabdo call CloseBufferByName('[Plugins]')
-		catch
-		endtry
+		CloseBufferList()
 	else
 		echo 'No session loaded, creating new session'
 		call MakeSession()
 	endif
 enddef
 
-def SwitchSession(directory: string)
+def SwitchSession()
+	var directory = ComputeLnum()->getline()
 	if UpdateSession()
 		tabonly
 		only
-		exe 'cd!' a:directory
+		exe 'cd!' directory
 		call LoadSession()
 	endif
 enddef
 
 def ListSessions()
-	exe 'term ++shell find ~/.vim_sessions -type f -exec ls -1t "{}" + | cut -d "/" -f5- | xargs dirname | sed -e "s;^;/;g"'
+	exe 'term ++shell find ~/.vim_sessions -type f -exec ls -1rt "{}" + | cut -d "/" -f5- | xargs dirname | sed -e "s;^;/;g"'
 enddef
 
