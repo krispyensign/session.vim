@@ -56,13 +56,18 @@ if !exists(":SwitchSession")
 	command -nargs=0 SwitchSession :call SwitchSession()
 endif
 
+if !exists(":CloseBufferList")
+	command -nargs=0 CloseBufferList :call CloseBufferList()
+endif
+
 # session helpers
+var Nameref: func
 def CloseBufferList(): bool
-	for bufname in g:session_buffers_to_close
-		if bufexists(bufname)
-			var nr = bufnr(bufname)
+	for bname in g:session_buffers_to_close
+		if bufexists(bname)
 			try
-				tabdo exe "bd" nr
+				Nameref = () => bname
+				g/^/exe "bd" bufnr(Nameref())
 			catch
 			endtry
 		endif
@@ -86,8 +91,8 @@ def UpdateSession(): bool
 	if filereadable(sessionfile)
 		if CloseBufferList()
 			exe "mksession!" sessionfile
-			echo "updating session"
 		endif
+		echo "updating session"
 	else
 		echo "file" sessionfile "is not readable"
 	endif
@@ -95,18 +100,10 @@ def UpdateSession(): bool
 enddef
 
 def LoadSession()
-	def DoLoadSession(sessionfile: string): bool
-		exe "source" sessionfile
-		return true
-	enddef
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	var sessionfile = sessiondir .. "/session.vim"
 	if filereadable(sessionfile)
-		tabonly
-		only
-		if DoLoadSession(sessionfile)
-			CloseBufferList()
-		endif
+		exe "source" sessionfile
 	else
 		echo "No session loaded, creating new session"
 		call MakeSession()
@@ -116,8 +113,6 @@ enddef
 def SwitchSession()
 	var directory = getline(".")
 	if UpdateSession()
-		tabonly
-		only
 		exe "cd!" directory
 		call LoadSession()
 	endif
