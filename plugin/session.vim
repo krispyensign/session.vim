@@ -13,6 +13,10 @@ if !exists("g:session_buffers_to_close")
 	g:session_buffers_to_close = ['NetrwTreeListing', '[Plugins]']
 endif
 
+if !exists("g:session_dir")
+	g:session_dir = ".vim_sessions/"
+endif
+
 if g:sessions_auto_update != 0
 	au VimLeave * :call UpdateSession()
 endif
@@ -71,7 +75,7 @@ def CloseBufferList(): bool
 enddef
 
 def MakeSession()
-	var sessiondir = $HOME .. '/.vim_sessions' .. getcwd()
+	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	if (filewritable(sessiondir) != 2)
 		exe 'silent !mkdir -p' sessiondir
 		redraw!
@@ -81,7 +85,7 @@ enddef
 
 def UpdateSession(): number
 	" Updates a session, BUT ONLY IF IT ALREADY EXISTS
-	var sessiondir = $HOME .. '/.vim_sessions' .. getcwd()
+	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	var sessionfile = sessiondir .. '/session.vim'
 	if (filereadable(sessionfile))
 		if CloseBufferList()
@@ -95,7 +99,7 @@ def UpdateSession(): number
 enddef
 
 def LoadSession()
-	var sessiondir = $HOME .. '/.vim_sessions' .. getcwd()
+	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	var sessionfile = sessiondir .. '/session.vim'
 	if (filereadable(sessionfile))
 		tabonly
