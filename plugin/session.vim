@@ -10,7 +10,7 @@ if !exists("g:sessions_auto_update")
 endif
 
 if !exists("g:session_buffers_to_close")
-	g:session_buffers_to_close = ['NetrwTreeListing', '[Plugins]']
+	g:session_buffers_to_close = ["NetrwTreeListing", "[Plugins]"]
 endif
 
 if !exists("g:session_dir")
@@ -61,7 +61,7 @@ def CloseBufferByName(name: string)
 	if bufexists(name)
 		let nr = bufnr(name)
 		try
-			exe 'bd' nr
+			exe "bd" nr
 		catch
 		endtry
 	endif
@@ -77,37 +77,36 @@ enddef
 def MakeSession()
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
 	if (filewritable(sessiondir) != 2)
-		exe 'silent !mkdir -p' sessiondir
+		exe "silent !mkdir -p" sessiondir
 		redraw!
 	endif
-	exe 'mksession!' sessiondir .. '/session.vim'
+	exe "mksession!" sessiondir .. "/session.vim"
 enddef
 
-def UpdateSession(): number
-	" Updates a session, BUT ONLY IF IT ALREADY EXISTS
+def UpdateSession()
+	# Updates a session, BUT ONLY IF IT ALREADY EXISTS
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
-	var sessionfile = sessiondir .. '/session.vim'
+	var sessionfile = sessiondir .. "/session.vim"
 	if (filereadable(sessionfile))
 		if CloseBufferList()
-			exe 'mksession!' sessionfile
-			echo 'updating session'
+			exe "mksession!" sessionfile
+			echo "updating session"
 		endif
 	else
-		echo 'file' sessionfile 'is not readable'
+		echo "file" sessionfile "is not readable"
 	endif
-	return 1
 enddef
 
 def LoadSession()
 	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
-	var sessionfile = sessiondir .. '/session.vim'
+	var sessionfile = sessiondir .. "/session.vim"
 	if (filereadable(sessionfile))
 		tabonly
 		only
-		exe 'source' sessionfile
+		exe "source" sessionfile
 		CloseBufferList()
 	else
-		echo 'No session loaded, creating new session'
+		echo "No session loaded, creating new session"
 		call MakeSession()
 	endif
 enddef
@@ -117,7 +116,7 @@ def SwitchSession()
 	if UpdateSession()
 		tabonly
 		only
-		exe 'cd!' directory
+		exe "cd!" directory
 		call LoadSession()
 	endif
 enddef
