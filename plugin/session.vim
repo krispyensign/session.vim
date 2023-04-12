@@ -33,9 +33,6 @@ noremap <SID>UpdateSession :call UpdateSession()<CR>
 noremap <unique> <script> <Plug>ListSessions;  <SID>ListSessions
 noremap <SID>ListSessions :call ListSessions()<CR>
 
-noremap <unique> <script> <Plug>SwitchSession;  <SID>SwitchSessions
-noremap <SID>SwitchSession :call SwitchSession()<CR>
-
 if !exists(":MakeSession")
 	command -nargs=0 MakeSession :call MakeSession()
 endif
@@ -50,14 +47,6 @@ endif
 
 if !exists(":ListSessions")
 	command -nargs=0 ListSessions :call ListSessions()
-endif
-
-if !exists(":SwitchSession")
-	command -nargs=0 SwitchSession :call SwitchSession()
-endif
-
-if !exists(":CloseBufferList")
-	command -nargs=0 CloseBufferList :call CloseBufferList()
 endif
 
 # session helpers
@@ -110,16 +99,72 @@ def LoadSession()
 	endif
 enddef
 
-def SwitchSession()
-	var directory = getline(".")
+def SwitchSession(directory: string)
+	echo "switching to" directory
 	if UpdateSession()
 		exe "cd!" directory
 		call LoadSession()
 	endif
 enddef
 
-# TODO: change to vim script instead of shell script
 def ListSessions()
-	exe 'term ++shell find ~/.vim_sessions -type f -exec ls -1rt "{}" + | cut -d "/" -f5- | xargs dirname | sed -e "s;^;/;g"'
-enddef
+	# if the buffer already exists then jump to its window
+	var w_sl = bufwinnr("__SessionList__")
+	if w_sl != -1
+		exe w_sl .. "wincmd w"
+		return
+	endif
 
+	# create the buffer
+	silent! split __SessionList__
+
+	# mark the buffer as scratch
+	setlocal buftype=nofile
+	setlocal bufhidden=wipe
+	setlocal noswapfile
+	setlocal nowrap
+	setlocal nobuflisted
+
+	# add some key mappings
+	nnoremap <buffer> <silent> q :bwipeout!<CR>
+	nnoremap <buffer> <silent> o :call <SID>SwitchSessionB(getline("."))<CR>
+	nnoremap <buffer> <silent> <CR> :call <SID>SwitchSessionB(getline("."))<CR>
+	nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>SwitchSessionB(getline("."))<CR>
+
+	# make it pretty
+	syn match Identifier "^\".*"
+	put ='"-----------------------------------------------------'
+	put ='" q                        - close session list'
+	put ='" o, <CR>, <2-LeftMouse>   - open session'
+	put ='"-----------------------------------------------------'
+	put =''
+	var l = line(".")
+
+	# create a list of sessions
+	var sessionpaths = mapnew(
+		# get a list of full paths for all session.vim files located in the
+		# home session directory
+		glob($HOME .. '/' .. g:session_dir .. '/**/session.vim', 1, 1),
+		# strip the leading path from the full paths to get the target
+		# directory
+		(i, v) => substitute(v, $HOME .. '/' .. g:session_dir, "", "g"))
+	# strip the filename and just get the path
+	var sessiontargets = mapnew(sessionpaths, (i, v) => fnamemodify(v, ":h"))
+
+	if len(sessiontargets) != 0
+		# populate the buffer with the results
+		silent put =sessiontargets
+	else
+		# make an error message appear instead if nothing is found
+		syn match Error "^\" There.*"
+		silent put ='" There are no saved sessions'
+	endif
+
+	# delete the first line
+	exe ":0,1d"
+	exe ":" .. l
+
+	# mark the buffer as not modifiable any more and no spell checking
+	setlocal nomodifiable
+	setlocal nospell
+enddef
