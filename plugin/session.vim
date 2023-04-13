@@ -9,49 +9,49 @@ if !exists("g:sessions_auto_update")
 	g:sessions_auto_update = 1
 endif
 
-if !exists("g:session_buffers_to_close")
-	g:session_buffers_to_close = ["NetrwTreeListing", "[Plugins]"]
+if !exists("g:sessions_buffers_to_close")
+	g:sessions_buffers_to_close = ["NetrwTreeListing", "[Plugins]"]
 endif
 
-if !exists("g:session_dir")
-	g:session_dir = ".vim_sessions/"
+if !exists("g:sessions_dir")
+	g:sessions_dir = ".vim_sessions/"
 endif
 
 if g:sessions_auto_update != 0
-	au VimLeave * :call UpdateSession()
+	au VimLeave * :call SessionsUpdate()
 endif
 
-noremap <unique> <script> <Plug>MakeSession;  <SID>MakeSession
-noremap <SID>MakeSession :call MakeSession()<CR>
+noremap <unique> <script> <Plug>SessionsMake;  <SID>SessionsMake
+noremap <SID>SessionsMake :call SessionsMake()<CR>
 
-noremap <unique> <script> <Plug>LoadSession;  <SID>LoadSession
-noremap <SID>LoadSession :call LoadSession()<CR>
+noremap <unique> <script> <Plug>SessionsLoad;  <SID>SessionsLoad
+noremap <SID>SessionsLoad :call SessionsLoad()<CR>
 
-noremap <unique> <script> <Plug>UpdateSession;  <SID>UpdateSession
-noremap <SID>UpdateSession :call UpdateSession()<CR>
+noremap <unique> <script> <Plug>SessionsUpdate;  <SID>SessionsUpdate
+noremap <SID>SessionsUpdate :call SessionsUpdate()<CR>
 
-noremap <unique> <script> <Plug>ListSessions;  <SID>ListSessions
-noremap <SID>ListSessions :call ListSessions()<CR>
+noremap <unique> <script> <Plug>SessionsList;  <SID>SessionsList
+noremap <SID>SessionsList :call SessionsList()<CR>
 
-if !exists(":MakeSession")
-	command -nargs=0 MakeSession :call MakeSession()
+if !exists(":SessionsMake")
+	command -nargs=0 SessionsMake :call SessionsMake()
 endif
 
-if !exists(":LoadSession")
-	command -nargs=0 LoadSession :call LoadSession()
+if !exists(":SessionsLoad")
+	command -nargs=0 SessionsLoad :call SessionsLoad()
 endif
 
-if !exists(":UpdateSession")
-	command -nargs=0 UpdateSession :call UpdateSession()
+if !exists(":SessionsUpdate")
+	command -nargs=0 SessionsUpdate :call SessionsUpdate()
 endif
 
-if !exists(":ListSessions")
-	command -nargs=0 ListSessions :call ListSessions()
+if !exists(":SessionsList")
+	command -nargs=0 SessionsList :call SessionsList()
 endif
 
-var homesessiondir = $HOME .. "/" .. g:session_dir
+var homesessiondir = $HOME .. "/" .. g:sessions_dir
 
-def MakeSession()
+def SessionsMake()
 	var sessiondir = homesessiondir .. getcwd()
 	if filewritable(sessiondir) != 2
 		exe "silent !mkdir -p" sessiondir
@@ -60,11 +60,11 @@ def MakeSession()
 	exe "mksession!" sessiondir .. "/session.vim"
 enddef
 
-def UpdateSession()
+def SessionsUpdate()
 	# updates a session, but only if it already exists
 	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
 	if filereadable(sessionfile)
-		for bname in g:session_buffers_to_close
+		for bname in g:sessions_buffers_to_close
 			if bufexists(bname)
 				try
 					exe "bd" bufnr(bname)
@@ -81,27 +81,27 @@ def UpdateSession()
 	endif
 enddef
 
-def LoadSession()
+def SessionsLoad()
 	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
 	if filereadable(sessionfile)
 		exe "source" sessionfile
 	else
 		echo "no session loaded, creating new session"
-		call MakeSession()
+		call SessionsMake()
 	endif
 enddef
 
 def SwitchSession(directory: string)
 	var sessionfile = homesessiondir .. directory .. "/session.vim"
 	if filereadable(sessionfile)
-		UpdateSession()
+		SessionsUpdate()
 		exe "source" sessionfile
 	else
 		echo "no session loaded"
 	endif
 enddef
 
-def ListSessions()
+def SessionsList()
 	# if the buffer already exists then jump to its window
 	var w_sl = bufwinnr("[SessionList]")
 	if w_sl != -1
@@ -134,7 +134,7 @@ def ListSessions()
 
 	# get a list of full paths for all session.vim files located in the home
 	# session directory
-	var sessiondir = $HOME .. '/' .. g:session_dir
+	var sessiondir = $HOME .. '/' .. g:sessions_dir
 	var sessionfiles = glob(sessiondir .. '/**/session.vim', 1, 1)
 
 	# strip the leading path from the full paths
