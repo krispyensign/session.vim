@@ -49,23 +49,10 @@ if !exists(":ListSessions")
 	command -nargs=0 ListSessions :call ListSessions()
 endif
 
-# session helpers
-var Nameref: func
-def CloseBufferList(): bool
-	for bname in g:session_buffers_to_close
-		if bufexists(bname)
-			Nameref = () => bname
-			try
-				g/^/exe "bd" bufnr(Nameref())
-			catch
-			endtry
-		endif
-	endfor
-	return true
-enddef
+var homesessiondir = $HOME .. "/" .. g:session_dir
 
 def MakeSession()
-	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
+	var sessiondir = homesessiondir .. getcwd()
 	if filewritable(sessiondir) != 2
 		exe "silent !mkdir -p" sessiondir
 		redraw!
@@ -73,98 +60,108 @@ def MakeSession()
 	exe "mksession!" sessiondir .. "/session.vim"
 enddef
 
-def UpdateSession(): bool
+def UpdateSession()
 	# updates a session, but only if it already exists
-	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
-	var sessionfile = sessiondir .. "/session.vim"
+	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
 	if filereadable(sessionfile)
-		if CloseBufferList()
-			exe "mksession!" sessionfile
-		endif
+		for bname in g:session_buffers_to_close
+			if bufexists(bname)
+				try
+					exe "bd" bufnr(bname)
+				catch
+					echo bname "id:" bufnr(bname) "doesn't exist"
+				endtry
+			endif
+		endfor
+		sleep 1m
+		exe "mksession!" sessionfile
 		echo "updating session"
 	else
-		echo "file" sessionfile "is not readable"
+		echo "no session loaded, skipping update"
 	endif
-	return true
 enddef
 
 def LoadSession()
-	var sessiondir = $HOME .. "/" .. g:session_dir .. getcwd()
-	var sessionfile = sessiondir .. "/session.vim"
+	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
 	if filereadable(sessionfile)
 		exe "source" sessionfile
 	else
-		echo "No session loaded, creating new session"
+		echo "no session loaded, creating new session"
 		call MakeSession()
 	endif
 enddef
 
 def SwitchSession(directory: string)
-	echo "switching to" directory
-	if UpdateSession()
-		exe "cd!" directory
-		call LoadSession()
+	var sessionfile = homesessiondir .. directory .. "/session.vim"
+	if filereadable(sessionfile)
+		UpdateSession()
+		exe "source" sessionfile
+	else
+		echo "no session loaded"
 	endif
 enddef
 
 def ListSessions()
 	# if the buffer already exists then jump to its window
-	var w_sl = bufwinnr("__SessionList__")
+	var w_sl = bufwinnr("[SessionList]")
 	if w_sl != -1
 		exe w_sl .. "wincmd w"
 		return
 	endif
 
 	# create the buffer
-	silent! split __SessionList__
+	silent! split [SessionList]
 
 	# mark the buffer as scratch
-	setlocal buftype=nofile
-	setlocal bufhidden=wipe
-	setlocal noswapfile
-	setlocal nowrap
-	setlocal nobuflisted
+	setlocal buftype=nofile bufhidden=wipe noswapfile nowrap nobuflisted
 
 	# add some key mappings
 	nnoremap <buffer> <silent> q :bwipeout!<CR>
-	nnoremap <buffer> <silent> o :call <SID>SwitchSessionB(getline("."))<CR>
-	nnoremap <buffer> <silent> <CR> :call <SID>SwitchSessionB(getline("."))<CR>
-	nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>SwitchSessionB(getline("."))<CR>
+	nnoremap <buffer> <silent> o :call <SID>SwitchSession(getline("."))<CR>
+	nnoremap <buffer> <silent> <CR> :call <SID>SwitchSession(getline("."))<CR>
+	nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>SwitchSession(getline("."))<CR>
 
 	# make it pretty
-	syn match Identifier "^\".*"
-	put ='"-----------------------------------------------------'
-	put ='" q                        - close session list'
-	put ='" o, <CR>, <2-LeftMouse>   - open session'
-	put ='"-----------------------------------------------------'
+	syn match Comment "^\#.*"
+	put ='#=====================================================#'
+	put ='# q                        - close session list       #'
+	put ='# o, <CR>, <2-LeftMouse>   - open session             #'
+	put ='#=====================================================#'
 	put =''
+
+	# record first entry line number
 	var l = line(".")
 
-	# create a list of sessions
-	var sessionpaths = mapnew(
-		# get a list of full paths for all session.vim files located in the
-		# home session directory
-		glob($HOME .. '/' .. g:session_dir .. '/**/session.vim', 1, 1),
-		# strip the leading path from the full paths to get the target
-		# directory
-		(i, v) => substitute(v, $HOME .. '/' .. g:session_dir, "", "g"))
-	# strip the filename and just get the path
-	var sessiontargets = mapnew(sessionpaths, (i, v) => fnamemodify(v, ":h"))
+	# get a list of full paths for all session.vim files located in the home
+	# session directory
+	var sessiondir = $HOME .. '/' .. g:session_dir
+	var sessionfiles = glob(sessiondir .. '/**/session.vim', 1, 1)
 
-	if len(sessiontargets) != 0
-		# populate the buffer with the results
-		silent put =sessiontargets
+	# strip the leading path from the full paths
+	var strippedsessionfiles = mapnew(
+		sessionfiles,
+		(i, v) => substitute(v, sessiondir, "", "g"))
+
+	# strip the filename to get the path of where the session points to
+	var sessionpaths = mapnew(
+		strippedsessionfiles,
+		# strip the filename and just get the path
+		(i, v) => fnamemodify(v, ":h"))
+
+	if len(sessionpaths) != 0
+		# if any sessions found then populate the buffer with the results
+		silent put =sessionpaths
 	else
 		# make an error message appear instead if nothing is found
-		syn match Error "^\" There.*"
-		silent put ='" There are no saved sessions'
+		syn match Error "^\*.*"
+		silent put ='*there are no saved sessions*'
 	endif
 
 	# delete the first line
-	exe ":0,1d"
+	:0,1d
+	# jump to first entry
 	exe ":" .. l
 
 	# mark the buffer as not modifiable any more and no spell checking
-	setlocal nomodifiable
-	setlocal nospell
+	setlocal nomodifiable nospell
 enddef
