@@ -17,6 +17,14 @@ if !exists("g:sessions_dir")
 	g:sessions_dir = ".vim_sessions/"
 endif
 
+if !exists("g:sessions_show_banner")
+	g:sessions_show_banner = 1
+endif
+
+if !exists("g:sessions_session_file_name")
+	g:sessions_session_file_name = "session.vim"
+endif
+
 if g:sessions_auto_update != 0
 	au VimLeave * :call SessionsUpdate()
 endif
@@ -50,6 +58,7 @@ if !exists(":SessionsList")
 endif
 
 var homesessiondir = $HOME .. "/" .. g:sessions_dir
+var sessionfilename = "/" .. g:sessions_session_file_name
 
 def SessionsMake()
 	var sessiondir = homesessiondir .. getcwd()
@@ -57,12 +66,12 @@ def SessionsMake()
 		exe "silent !mkdir -p" sessiondir
 		redraw!
 	endif
-	exe "mksession!" sessiondir .. "/session.vim"
+	exe "mksession!" sessiondir .. sessionfilename
 enddef
 
 def SessionsUpdate()
 	# updates a session, but only if it already exists
-	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
+	var sessionfile = homesessiondir .. getcwd() .. sessionfilename
 	if filereadable(sessionfile)
 		for bname in g:sessions_buffers_to_close
 			if bufexists(bname)
@@ -82,7 +91,7 @@ def SessionsUpdate()
 enddef
 
 def SessionsLoad()
-	var sessionfile = homesessiondir .. getcwd() .. "/session.vim"
+	var sessionfile = homesessiondir .. getcwd() .. sessionfilename
 	if filereadable(sessionfile)
 		exe "source" sessionfile
 	else
@@ -92,7 +101,7 @@ def SessionsLoad()
 enddef
 
 def SwitchSession(directory: string)
-	var sessionfile = homesessiondir .. directory .. "/session.vim"
+	var sessionfile = homesessiondir .. directory .. sessionfilename
 	if filereadable(sessionfile)
 		SessionsUpdate()
 		exe "source" sessionfile
@@ -122,20 +131,22 @@ def SessionsList()
 	nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>SwitchSession(getline("."))<CR>
 
 	# make it pretty
-	syn match Comment "^\#.*"
-	put ='#=====================================================#'
-	put ='# q                        - close session list       #'
-	put ='# o, <CR>, <2-LeftMouse>   - open session             #'
-	put ='#=====================================================#'
-	put =''
+	if g:sessions_show_banner
+		syn match Comment "^\#.*"
+		put ="#=====================================================#"
+		put ="# q                        - close session list       #"
+		put ="# o, <CR>, <2-LeftMouse>   - open session             #"
+		put ="#=====================================================#"
+	endif
+	put =""
 
 	# record first entry line number
 	var l = line(".")
 
-	# get a list of full paths for all session.vim files located in the home
+	# get a list of full paths for all session files located in the home
 	# session directory
-	var sessiondir = $HOME .. '/' .. g:sessions_dir
-	var sessionfiles = glob(sessiondir .. '/**/session.vim', 1, 1)
+	var sessiondir = $HOME .. "/" .. g:sessions_dir
+	var sessionfiles = glob(sessiondir .. "/**" .. sessionfilename, 1, 1)
 
 	# strip the leading path from the full paths
 	var strippedsessionfiles = mapnew(
@@ -154,7 +165,7 @@ def SessionsList()
 	else
 		# make an error message appear instead if nothing is found
 		syn match Error "^\*.*"
-		silent put ='*there are no saved sessions*'
+		silent put ="*there are no saved sessions*"
 	endif
 
 	# delete the first line
