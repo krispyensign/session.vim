@@ -25,6 +25,10 @@ if !exists("g:sessions_session_file_name")
 	g:sessions_session_file_name = "session.vim"
 endif
 
+if !exists("g:sessions_clean_hidden")
+	g:sessions_clean_hidden = 1
+endif
+
 if g:sessions_auto_update != 0
 	au VimLeave * :call SessionsUpdate()
 endif
@@ -82,6 +86,11 @@ def SessionsUpdate()
 				endtry
 			endif
 		endfor
+		cclose
+		lclose
+		if g:sessions_clean_hidden
+			CleanBuffers()
+		endif
 		sleep 1m
 		exe "mksession!" sessionfile
 		echo "updating session"
@@ -96,7 +105,7 @@ def SessionsLoad()
 		exe "source" sessionfile
 	else
 		echo "no session loaded, creating new session"
-		call SessionsMake()
+		SessionsMake()
 	endif
 enddef
 
@@ -110,11 +119,29 @@ def SwitchSession(directory: string)
 	endif
 enddef
 
+def CleanBuffers()
+  # get the buffers that are visible in each tab
+  var visible = {}
+  for t in range(1, tabpagenr('$'))
+    for b in tabpagebuflist(t)
+      visible[b] = 1
+    endfor
+  endfor
+
+  # close any buffer that are not visible
+  var tally = 0
+  for b in range(1, bufnr('$'))
+    if buflisted(b) && !has_key(visible, b)
+      tally += 1
+      exe "bwipeout" b
+    endif
+  endfor
+enddef
+
 def SessionsList()
 	# if the buffer already exists then jump to its window
-	var w_sl = bufwinnr("[SessionList]")
-	if w_sl != -1
-		exe w_sl .. "wincmd w"
+	if bufexists("[SessionList]")
+		exe bufwinnr("[SessionList]") .. "wincmd w"
 		return
 	endif
 
